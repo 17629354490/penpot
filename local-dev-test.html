@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penpot 本地开发环境测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .test-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #007acc;
+        }
+
+        .result {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #005a9e;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .config-panel {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Penpot 本地开发环境测试</h1>
+
+    <div class="config-panel">
+        <h3>配置</h3>
+        <label>Penpot URL:</label>
+        <input type="text" id="penpotUrl" value="http://localhost:9001" placeholder="http://localhost:9001">
+        <label>访问令牌:</label>
+        <input type="password" id="accessToken" placeholder="输入您的访问令牌">
+        <button onclick="updateConfig()">更新配置</button>
+    </div>
+
+    <div class="test-section">
+        <h3>1. 基础连接测试</h3>
+        <button onclick="testBasicConnection()">测试基础连接</button>
+        <div id="basicResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. CORS配置测试</h3>
+        <button onclick="testCORS()">测试CORS配置</button>
+        <div id="corsResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. API端点测试</h3>
+        <button onclick="testAPIEndpoints()">测试API端点</button>
+        <div id="apiResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. 访问令牌认证测试（创建项目）</h3>
+        <button onclick="testTokenAuth()">测试令牌认证</button>
+        <div id="tokenResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>5. 完整集成测试</h3>
+        <button onclick="testFullIntegration()">完整测试</button>
+        <div id="integrationResult"></div>
+    </div>
+
+    <script>
+        let config = {
+            url: 'http://localhost:9001',
+            token: ''
+        };
+
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="result ${type}">${message}</div>`;
+        }
+
+        function updateConfig() {
+            config.url = document.getElementById('penpotUrl').value;
+            config.token = document.getElementById('accessToken').value;
+            showResult('basicResult', '配置已更新', 'success');
+        }
+
+        async function testBasicConnection() {
+            showResult('basicResult', '测试基础连接中...', 'info');
+
+            try {
+                // 尝试获取favicon来测试基本连接
+                const response = await fetch(`${config.url}/favicon.ico`, {
+                    method: 'GET',
+                    mode: 'no-cors'
+                });
+                showResult('basicResult', '✅ 基础连接成功\n服务器可达', 'success');
+            } catch (error) {
+                showResult('basicResult', `❌ 连接失败: ${error.message}\n\n可能的原因:\n1. 服务器未启动\n2. 端口号错误\n3. 防火墙阻止`, 'error');
+            }
+        }
+
+        async function testCORS() {
+            showResult('corsResult', '测试CORS配置中...', 'info');
+
+            try {
+                const response = await fetch(`${config.url}/api/rpc/command/create-project`, {
+                    method: 'OPTIONS',
+                    mode: 'cors',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'content-type,authorization'
+                    }
+                });
+
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers'),
+                    'Access-Control-Allow-Credentials': response.headers.get('Access-Control-Allow-Credentials')
+                };
+
+                let result = 'CORS配置信息:\n';
+                for (const [key, value] of Object.entries(corsHeaders)) {
+                    result += `${key}: ${value || '未设置'}\n`;
+                }
+
+                if (!corsHeaders['Access-Control-Allow-Origin']) {
+                    result += '\n⚠️ 警告: 未设置Access-Control-Allow-Origin\n这可能导致CORS错误';
+                    showResult('corsResult', result, 'warning');
+                } else {
+                    showResult('corsResult', result, 'success');
+                }
+            } catch (error) {
+                showResult('corsResult', `❌ CORS测试失败: ${error.message}\n\n解决方案:\n1. 确保Penpot后端启用了CORS\n2. 检查PENPOT_FLAGS是否包含enable-cors\n3. 重启Penpot服务`, 'error');
+            }
+        }
+
+        async function testAPIEndpoints() {
+            showResult('apiResult', '测试API端点中...', 'info');
+
+            const endpoints = [
+                { path: '/api/rpc/command/create-project', method: 'POST' }
+            ];
+
+            let results = '';
+
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(`${config.url}${endpoint.path}`, {
+                        method: endpoint.method,
+                        mode: 'cors',
+                        credentials: 'omit',
+                        headers: endpoint.method === 'POST' ? {
+                            'Content-Type': 'application/transit+json'
+                        } : {},
+                        body: endpoint.path.includes('create-project') ? JSON.stringify({
+                            name: "test08121111",
+                            team_id: "b2ed3408-1f12-81cb-8006-a28ba899e36c"
+                        }) : undefined
+                    });
+                    results += `✅ ${endpoint.path} (${endpoint.method}): ${response.status}\n`;
+                } catch (error) {
+                    results += `❌ ${endpoint.path} (${endpoint.method}): ${error.message}\n`;
+                }
+            }
+
+            showResult('apiResult', results, 'info');
+        }
+
+        async function testTokenAuth() {
+            if (!config.token) {
+                showResult('tokenResult', '⚠️ 请先设置访问令牌', 'warning');
+                return;
+            }
+
+            showResult('tokenResult', '测试访问令牌认证中...', 'info');
+
+            try {
+                const response = await fetch(`${config.url}/api/rpc/command/create-project`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/transit+json',
+                        'Accept': 'application/transit+json',
+                        'Authorization': `Token ${config.token}`
+                    },
+                    credentials: 'omit',
+                    body: JSON.stringify({
+                        name: "test08121111",
+                        team_id: "b2ed3408-1f12-81cb-8006-a28ba899e36c"
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult('tokenResult', `✅ 令牌认证成功\n项目创建成功\n项目ID: ${data.id || 'N/A'}\n项目名称: ${data.name || 'N/A'}`, 'success');
+                } else if (response.status === 401) {
+                    showResult('tokenResult', `❌ 认证失败 (401)\n可能原因:\n1. 令牌无效\n2. 令牌已过期\n3. 后端未启用访问令牌功能`, 'error');
+                } else {
+                    const errorText = await response.text();
+                    showResult('tokenResult', `❌ 请求失败: ${response.status} ${response.statusText}\n错误详情: ${errorText}`, 'error');
+                }
+            } catch (error) {
+                showResult('tokenResult', `❌ 令牌认证错误: ${error.message}`, 'error');
+            }
+        }
+
+        async function testFullIntegration() {
+            showResult('integrationResult', '开始完整集成测试...', 'info');
+
+            let results = '';
+
+            // 1. 测试基础连接
+            try {
+                await fetch(`${config.url}/favicon.ico`, { method: 'GET', mode: 'no-cors' });
+                results += '✅ 基础连接: 成功\n';
+            } catch (error) {
+                results += '❌ 基础连接: 失败\n';
+                showResult('integrationResult', results, 'error');
+                return;
+            }
+
+            // 2. 测试CORS
+            try {
+                await fetch(`${config.url}/api/rpc/command/create-project`, {
+                    method: 'OPTIONS',
+                    mode: 'cors'
+                });
+                results += '✅ CORS配置: 正常\n';
+            } catch (error) {
+                results += '❌ CORS配置: 异常\n';
+            }
+
+            // 3. 测试API端点
+            try {
+                const response = await fetch(`${config.url}/api/rpc/command/create-project`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/transit+json' },
+                    credentials: 'omit',
+                    body: JSON.stringify({
+                        name: "test0825",
+                        team_id: "b2ed3408-1f12-81cb-8006-a28ba899e36c"
+                    })
+                });
+                results += `✅ API端点: ${response.status}\n`;
+            } catch (error) {
+                results += '❌ API端点: 失败\n';
+            }
+
+            // 4. 测试令牌认证
+            if (config.token) {
+                try {
+                    const response = await fetch(`${config.url}/api/rpc/command/create-project`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/transit+json',
+                            'Authorization': `Token ${config.token}`
+                        },
+                        credentials: 'omit',
+                        body: JSON.stringify({
+                            name: "test0825",
+                            team_id: "b2ed3408-1f12-81cb-8006-a28ba899e36c"
+                        })
+                    });
+                    if (response.ok) {
+                        results += '✅ 令牌认证: 成功\n';
+                    } else {
+                        results += `❌ 令牌认证: ${response.status}\n`;
+                    }
+                } catch (error) {
+                    results += '❌ 令牌认证: 失败\n';
+                }
+            } else {
+                results += '⚠️ 令牌认证: 未测试（未设置令牌）\n';
+            }
+
+            results += '\n集成测试完成！';
+            showResult('integrationResult', results, 'info');
+        }
+
+        // 页面加载时自动设置配置
+        window.addEventListener('load', () => {
+            updateConfig();
+        });
+    </script>
+</body>
+
+</html>

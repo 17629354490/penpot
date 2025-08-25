@@ -24,7 +24,7 @@
 # WARNING: if you're exposing Penpot to the internet, you should remove the flags
 # 'disable-secure-session-cookies' and 'disable-email-verification'
 x-flags: &penpot-flags
-  PENPOT_FLAGS: enable-registration enable-login-with-password enable-access-tokens enable-webhooks enable-cors
+  PENPOT_FLAGS: disable-email-verification enable-registration enable-login-with-password enable-access-tokens enable-webhooks enable-cors
 
 x-uri: &penpot-public-uri
   PENPOT_PUBLIC_URI: http://localhost:9001
