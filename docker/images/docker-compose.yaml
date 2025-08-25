@@ -24,7 +24,7 @@
 # WARNING: if you're exposing Penpot to the internet, you should remove the flags
 # 'disable-secure-session-cookies' and 'disable-email-verification'
 x-flags: &penpot-flags
-  PENPOT_FLAGS: disable-email-verification enable-smtp enable-prepl-server disable-secure-session-cookies
+  PENPOT_FLAGS: enable-registration enable-login-with-password enable-access-tokens enable-webhooks enable-cors
 
 x-uri: &penpot-public-uri
   PENPOT_PUBLIC_URI: http://localhost:9001
@@ -87,7 +87,7 @@ services:
     networks:
       - penpot
 
-    # labels:
+      # labels:
       # - "traefik.enable=true"
 
       # ## HTTPS: example of labels for the case where penpot will be exposed to the

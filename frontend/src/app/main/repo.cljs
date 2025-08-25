@@ -112,10 +112,12 @@
         request
         {:method method
          :uri (u/join cf/public-uri "api/rpc/command/" nid)
-         :credentials "include"
-         :headers {"accept" "application/transit+json,text/event-stream,*/*"
-                   "x-external-session-id" (cf/external-session-id)
-                   "x-event-origin" (::ev/origin (meta params))}
+         :credentials (if (cf/use-access-token-auth?) "omit" "include")
+         :headers (cond-> {"accept" "application/transit+json,text/event-stream,*/*"
+                          "x-external-session-id" (cf/external-session-id)
+                          "x-event-origin" (::ev/origin (meta params))}
+                   (cf/use-access-token-auth?)
+                   (assoc "authorization" (cf/get-authorization-header)))
          :body (when (= method :post)
                  (if form-data?
                    (http/form-data params)
@@ -162,9 +164,11 @@
         params (dissoc params :provider)]
     (->> (http/send! {:method :post
                       :uri uri
-                      :credentials "include"
-                      :headers {"x-external-session-id" (cf/external-session-id)
-                                "x-event-origin" (::ev/origin (meta params))}
+                      :credentials (if (cf/use-access-token-auth?) "omit" "include")
+                      :headers (cond-> {"x-external-session-id" (cf/external-session-id)
+                                       "x-event-origin" (::ev/origin (meta params))}
+                                (cf/use-access-token-auth?)
+                                (assoc "authorization" (cf/get-authorization-header)))
                       :query params})
          (rx/map http/conditional-decode-transit)
          (rx/mapcat handle-response))))
@@ -174,9 +178,11 @@
   (->> (http/send! {:method :post
                     :uri (u/join cf/public-uri "api/export")
                     :body (http/transit-data (dissoc params :blob?))
-                    :headers {"x-external-session-id" (cf/external-session-id)
-                              "x-event-origin" (::ev/origin (meta params))}
-                    :credentials "include"
+                    :headers (cond-> {"x-external-session-id" (cf/external-session-id)
+                                     "x-event-origin" (::ev/origin (meta params))}
+                              (cf/use-access-token-auth?)
+                              (assoc "authorization" (cf/get-authorization-header)))
+                    :credentials (if (cf/use-access-token-auth?) "omit" "include")
                     :response-type (if blob? :blob :text)})
        (rx/map http/conditional-decode-transit)
        (rx/mapcat handle-response)))
@@ -194,9 +200,11 @@
   [id params]
   (->> (http/send! {:method :post
                     :uri  (u/join cf/public-uri "api/rpc/command/" (name id))
-                    :credentials "include"
-                    :headers {"x-external-session-id" (cf/external-session-id)
-                              "x-event-origin" (::ev/origin (meta params))}
+                    :credentials (if (cf/use-access-token-auth?) "omit" "include")
+                    :headers (cond-> {"x-external-session-id" (cf/external-session-id)
+                                     "x-event-origin" (::ev/origin (meta params))}
+                              (cf/use-access-token-auth?)
+                              (assoc "authorization" (cf/get-authorization-header)))
                     :body (http/form-data params)})
        (rx/map http/conditional-decode-transit)
        (rx/mapcat handle-response)))

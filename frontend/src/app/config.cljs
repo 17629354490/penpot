@@ -163,6 +163,32 @@
   (dm/assert! (contains? valid-platforms candidate))
   (= candidate platform))
 
+;; --- Access Token Configuration
+
+(defn get-access-token
+  "Get the access token from global configuration or external function"
+  []
+  (let [token (obj/get global "penpotAccessToken")]
+    (if (fn? token)
+      (token)
+      token)))
+
+(defn use-access-token-auth?
+  "Check if we should use access token authentication instead of cookie auth"
+  []
+  (let [use-token (obj/get global "penpotUseAccessTokenAuth")]
+    (if (fn? use-token)
+      (use-token)
+      (if (some? use-token)
+        use-token
+        true)))) ; 默认启用访问令牌认证
+
+(defn get-authorization-header
+  "Get the Authorization header value for access token authentication"
+  []
+  (when-let [token (get-access-token)]
+    (str "Token " token)))
+
 (defn resolve-profile-photo-url
   [{:keys [photo-id fullname name color] :as profile}]
   (if (nil? photo-id)
